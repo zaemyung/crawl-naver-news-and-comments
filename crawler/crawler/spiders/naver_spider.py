@@ -1,6 +1,9 @@
 import scrapy
 import os
+import re
 import json
+from datetime import datetime
+from datetime import timedelta
 
 class NaverSpider(scrapy.Spider):
     name = "naver"
@@ -25,50 +28,43 @@ class NaverSpider(scrapy.Spider):
         # base_url_entertain+YYYYMMDD
         base_url_entertain = 'http://entertain.naver.com/ranking/memo?date='
         
-        # 20050622부터 시작하여 일주일씩 증가
-        start_date = 20050622
+        # 20050615부터 시작하여 일주일씩 증가
+        start_date = datetime.strptime('20050615', '%Y%m%d')
+        delta = timedelta(days=7)
+        while(start_date <= datetime.now()):
+            start_date_str = start_date.strftime('%Y%m%d')
+            for secId in list(sectionId.keys()):
+                url = base_url_section+str(secId)+base_url_date+start_date_str
+                yield scrapy.Request(url=url, callback=self.parse_section, meta={'week':start_date_str})
+            # yield scrapy.Request(url=base_url_entertain+start_date_str, callback=self.parse_entertain, meta={'week':start_date_str})
+            start_date += delta
 
-        # TODO FROM HERE
-        for year in years:
-            url = base_url+str(year)+'.html'
-            yield scrapy.Request(url=url, callback=self.parse_year)
-
-    def parse_year(self, response):
-        days = response.xpath("//p/a[starts-with(@href, \
-                              '/resources/archive/us/')]")
-        for day in days:
-            day_url = day.xpath('@href').extract_first()
-            date = day_url.split("/")[-1][:-5] # e.g. 20160130
-            item = {'date':date}
-            yield scrapy.Request(url=response.urljoin(day_url), \
-                                 callback=self.parse_day, meta={'item':item})
-
-    def parse_day(self, response):
-        articles = response.xpath("//div/a[starts-with(@href, \
-                              'http://www.reuters.com/article/')]")
+    def parse_section(self, response):
+        articles = set(response.xpath("//div[@class='content']//a[contains(@href, '/main/ranking/read.nhn?')]/@href").extract())
         for article in articles:
-            article_link = article.xpath("@href").extract_first()
-            article_title = article.xpath("text()").extract_first()
-            item = response.meta['item']
-            item['title'] = article_title
-            yield scrapy.Request(url=response.urljoin(article_link), \
-                                 callback=self.parse_article, \
-                                 meta={'item':item})
+            yield scrapy.Request(url=response.urljoin(article), \
+                                 callback=self.parse_article, meta={'week':response.meta['week']})
+
+    def parse_entertain(self, response):
+        pass
+    
+    def clean_text(self, text):
+        cleaned_text = re.sub('[a-zA-Z]', '', text)
+        cleaned_text = re.sub('[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]','', cleaned_text)
+        
+        return cleaned_text
 
     def parse_article(self, response):
-        item = response.meta['item']
-        section = response.xpath("//span[@class='article-section']\
-                                 /a/text()").extract_first().replace(" ", "_")
-        texts = response.xpath("//*[@id='article-text']/p/text()").extract()
-        date = item['date']
-        direc = date[:4]+"/"+date[4:6]+"/"
-        save_path = "./crawled/"+direc # e.g. ./crawled/2011/02
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        with open(os.path.join(save_path, date[-2:]+".json"), 'a') as out_file:
-            article = {
-                        'title':item['title'], 'section':section,
-                        'date':date, 'text':texts
-                      }
-            out = json.dumps(article)
-            out_file.write(out+"\n")
+        title  = response.xpath("//div[@class='article_info']/h3[@id='articleTitle']/text()").extract_first()
+        date = response.xpath("//div[@class='sponsor']/span[@class='t11']/text()").extract_first()
+        body = response.xpath("//div[@id='articleBodyContents']/text()").extract()
+        body = self.clean_text(body)
+
+        with open(response.meta['week']+'.json', 'a') as outfile:
+            a = {
+                    'title':title,
+                    'date':date,
+                    'body':body
+                }
+            json.dump(a, outfile)
+
