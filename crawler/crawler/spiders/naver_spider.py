@@ -13,9 +13,7 @@ class NaverSpider(scrapy.Spider):
 
     def start_requests(self):
         # 연예 섹션을 제외한 기사들의 주소
-        # base_url_section+sectionId+base_url_date+YYYYMMDD
-        base_url_section = 'http://news.naver.com/main/ranking/memoWeek.nhn?rankingType=memo_week&sectionId='
-        base_url_date = '&date='
+        base_url_section = 'http://news.naver.com/main/ranking/popularDay.nhn?rankingType=popular_day&sectionId={}&date={}'
         sectionId = {
                 100:'정치',
                 101:'경제',
@@ -24,26 +22,35 @@ class NaverSpider(scrapy.Spider):
                 104:'세계',
                 105:'IT/과학'
                 }
+        section_date_format = '%Y%m%d'
+
         # 연예 섹션 기사들의 주소
-        # base_url_entertain+YYYYMMDD
-        base_url_entertain = 'http://entertain.naver.com/ranking/memo?date='
+        base_url_entertain = 'http://entertain.naver.com/ranking#type=hit_total&date={}'
+        entertain_date_format = '%Y-%m-%d'
         
-        # 20050615부터 시작하여 일주일씩 증가
-        start_date = datetime.strptime('20050615', '%Y%m%d')
-        delta = timedelta(days=7)
+        # 2006 03 30부터 시작하여 하루씩 증가
+        start_date = datetime.strptime('20060330', '%Y%m%d')
+        delta = timedelta(days=1)
         while(start_date <= datetime.now()):
-            start_date_str = start_date.strftime('%Y%m%d')
+            section_start_date_str = start_date.strftime(section_date_format)
+            entertain_start_date_str = start_date.strftime(entertain_date_format)
             for secId in list(sectionId.keys()):
-                url = base_url_section+str(secId)+base_url_date+start_date_str
-                yield scrapy.Request(url=url, callback=self.parse_section, meta={'week':start_date_str})
-            # yield scrapy.Request(url=base_url_entertain+start_date_str, callback=self.parse_entertain, meta={'week':start_date_str})
+                url = base_url_section.format(secId, section_start_date_str)
+                yield scrapy.Request(url=url, callback=self.parse_section, meta={'date':section_start_date_str})
+                input()
+            # yield scrapy.Request(url=base_url_entertain.format(entertain_start_date_str), callback=self.parse_entertain, meta={'date':entertain_start_date_str})
             start_date += delta
 
     def parse_section(self, response):
-        articles = set(response.xpath("//div[@class='content']//a[contains(@href, '/main/ranking/read.nhn?')]/@href").extract())
-        for article in articles:
-            yield scrapy.Request(url=response.urljoin(article), \
-                                 callback=self.parse_article, meta={'week':response.meta['week']})
+        articles = list(set(response.xpath("//ol[@class='ranking_list']/li[contains(@class, 'ranking_item')]").extract()))
+        print(articles)
+        #  for article in articles:
+        #      article_url = article.xpath("//div[@class='ranking_headline']/a[contains(@href, '/main/ranking/read.nhn?')]/@href").extract_first()
+        #      print(article_url)
+        #      news_company = article.xpath("//div[@class='ranking_office']/text()").extract_first()
+        #      print(news_company)
+        #      #  yield scrapy.Request(url=response.urljoin(article_url), \
+        #      #          callback=self.parse_article, meta={'date':response.meta['date'], 'news_company':news_company})
 
     def parse_entertain(self, response):
         pass
