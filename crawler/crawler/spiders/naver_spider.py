@@ -1,4 +1,5 @@
 import scrapy
+import uuid
 import os
 import re
 import time
@@ -92,6 +93,44 @@ class NaverSpider(scrapy.Spider):
             clean.append(line)
         
         return clean
+
+    def get_emotions(self, ref_url, oid, aid):
+        cookies = {
+            'NNB': '2O4YAKQTXTRFU',
+            'npic': '9V6bf43PJkUhcE3LcetxcSCMqd8JvHq2Sx/WmjD4eHYRKZSWzp7BSRSURWxx0ihaCA==',
+            'nid_iplevel': '1',
+            'nx_ssl': '2',
+            'BMR': 's=1525866338822&r=https%3A%2F%2Fm.blog.naver.com%2FPostView.nhn%3FblogId%3Dcurtate%26logNo%3D20167714225%26proxyReferer%3Dhttps%253A%252F%252Fwww.google.co.kr%252F&r2=https%3A%2F%2Fwww.google.co.kr%2F',
+            '_naver_usersession_': 'W14OidZz3xusg1fHD58UQg==',
+            'page_uid': 'TYSsUlpwdjNssnJnE9sssssssuV-067828',
+        }
+
+        headers = {
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'en-US,en;q=0.9,ko;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
+            'Accept': '*/*',
+            'Referer': ref_url,
+            'Connection': 'keep-alive',
+        }
+
+        cur_time = str(int(time.time()*1000))
+
+        params = (
+            ('suppress_response_codes', 'true'),
+            ('callback', 'jQuery11{}_{}'.format(''.join([str(random.randint(0,9)) for i in range(19)]), cur_time)),
+            ('q', 'NEWS[ne_{0}_{1}]|NEWS_SUMMARY[{0}_{1}]|NEWS_MAIN[ne_{0}_{1}]'.format(oid, aid)),
+            ('isDuplication', 'false'),
+            ('uuid', str(uuid.uuid4())),
+            ('_', cur_time),
+        )
+
+        response = requests.get('http://news.like.naver.com/v1/search/contents', headers=headers, params=params, cookies=cookies)
+        response.encoding = 'utf-8'
+        response = json.loads(response.text[46:-2])
+        emotions = response['contents'][0]['reactions']
+        #  print(emotions)
+        return emotions
 
     def get_comments(self, secId, ref_url, oid, aid):
         headers = {
@@ -201,6 +240,7 @@ class NaverSpider(scrapy.Spider):
             #  print(response.meta['news_company'])
             print(date)
             #  print(body)
+            emotions = self.get_emotions(response.url, oid, aid)
             comments = self.get_comments(response.meta['sectionId'], response.url, oid, aid)
 
             with open(os.path.join('/home1/irteam/users/zaemyung/crawl-naver/crawler/crawler/crawled', response.meta['date']+'.json'), 'a') as outfile:
@@ -209,7 +249,8 @@ class NaverSpider(scrapy.Spider):
                         'date':date,
                         'body':body,
                         'news_company':response.meta['news_company'],
-                        'comments':comments
+                        'comments':comments,
+                        'emotions':emotions
                     }
                 json.dump(a, outfile)
                 outfile.write('\n')
