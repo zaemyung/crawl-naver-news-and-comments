@@ -33,7 +33,8 @@ class NaverSpider(scrapy.Spider):
         entertain_date_format = '%Y-%m-%d'
         
         # 2006 05 01부터 시작하여 하루씩 증가
-        start_date = datetime.strptime('20060501', '%Y%m%d')
+        #  start_date = datetime.strptime('20060501', '%Y%m%d')
+        start_date = datetime.strptime('20060516', '%Y%m%d')
         delta = timedelta(days=1)
         while(start_date <= datetime.now()):
             section_start_date_str = start_date.strftime(section_date_format)
@@ -153,7 +154,7 @@ class NaverSpider(scrapy.Spider):
             ('country', ''),
             ('objectId', 'news{},{}'.format(oid, aid)),
             ('categoryId', ''),
-            ('pageSize', '20'),
+            ('pageSize', '100'),
             ('indexSize', '10'),
             ('groupId', ''),
             ('listType', 'OBJECT'),
@@ -182,7 +183,7 @@ class NaverSpider(scrapy.Spider):
             #  print(pageModel)
 
             while(response['success'] and pageModel['nextPage'] != 0):
-                time.sleep(1)
+                time.sleep(0.5)
                 prev_commentNo = commentList[0]['commentNo']
                 current_commentNo = commentList[-1]['commentNo']
                 cur_time = str(int(time.time()*1000))
