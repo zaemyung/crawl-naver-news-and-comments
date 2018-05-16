@@ -34,7 +34,7 @@ class NaverSpider(scrapy.Spider):
         
         # 2006 05 01부터 시작하여 하루씩 증가
         #  start_date = datetime.strptime('20060501', '%Y%m%d')
-        start_date = datetime.strptime('20060516', '%Y%m%d')
+        start_date = datetime.strptime('20080101', '%Y%m%d')
         delta = timedelta(days=1)
         while(start_date <= datetime.now()):
             section_start_date_str = start_date.strftime(section_date_format)
@@ -182,10 +182,14 @@ class NaverSpider(scrapy.Spider):
             #  print(commentList)
             #  print(pageModel)
 
-            while(response['success'] and pageModel['nextPage'] != 0):
+            while(response['success'] and pageModel['nextPage'] != 0 and len(commentList) > 0):
                 time.sleep(0.5)
-                prev_commentNo = commentList[0]['commentNo']
-                current_commentNo = commentList[-1]['commentNo']
+                try:
+                    prev_commentNo = commentList[0]['commentNo']
+                    current_commentNo = commentList[-1]['commentNo']
+                except IndexError:
+                    print("INDEX ERROR!!!!")
+                    break
                 cur_time = str(int(time.time()*1000))
                 next_params = (
                     ('ticket', 'news'),
@@ -196,14 +200,14 @@ class NaverSpider(scrapy.Spider):
                     ('country', ''),
                     ('objectId', 'news{},{}'.format(oid, aid)),
                     ('categoryId', ''),
-                    ('pageSize', '20'),
+                    ('pageSize', '100'),
                     ('indexSize', '10'),
                     ('groupId', ''),
                     ('listType', 'OBJECT'),
                     ('pageType', 'more'),
                     ('page', '{}'.format(pageModel['page']+1)),
                     ('refresh', 'false'),
-                    ('sort', 'FAVORITE'),
+                    ('sort', result['sort']),
                     ('current', current_commentNo),
                     ('prev', prev_commentNo),
                     ('includeAllStatus', 'false'),
@@ -237,15 +241,16 @@ class NaverSpider(scrapy.Spider):
 
         if title and body:
             body = self.clean_text(body)
-            print(title)
+            print(date, title)
             #  print(response.meta['news_company'])
-            print(date)
             #  print(body)
             emotions = self.get_emotions(response.url, oid, aid)
             comments = self.get_comments(response.meta['sectionId'], response.url, oid, aid)
+            #  print(comments)
 
-            with open(os.path.join('/home1/irteam/users/zaemyung/crawl-naver/crawler/crawler/crawled', response.meta['date']+'.json'), 'a') as outfile:
+            with open(os.path.join('/home1/irteam/users/zaemyung/crawl-naver/crawler/crawler/crawled/rebang', response.meta['date']+'.json'), 'a') as outfile:
                 a = {
+                        'section':self.sectionId[response.meta['sectionId']],
                         'title':title,
                         'date':date,
                         'body':body,
