@@ -34,9 +34,10 @@ class NaverSpider(scrapy.Spider):
         
         # 2006 05 01부터 시작하여 하루씩 증가
         #  start_date = datetime.strptime('20060501', '%Y%m%d')
-        start_date = datetime.strptime('20080101', '%Y%m%d')
+        start_date = datetime.strptime('20180524', '%Y%m%d')
+        end_date = datetime.strptime('20180525', '%Y%m%d')
         delta = timedelta(days=1)
-        while(start_date <= datetime.now()):
+        while(start_date <= end_date):
             section_start_date_str = start_date.strftime(section_date_format)
             entertain_start_date_str = start_date.strftime(entertain_date_format)
             for secId in list(self.sectionId.keys()):
