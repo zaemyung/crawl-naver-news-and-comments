@@ -1,5 +1,5 @@
 # crawl-naver-news
-Crawling the top 30 most commented news articles per week
+Crawling the top 30 most read news articles per week
 
 ## WARNING
 - This codes can be outdated at anytime.
