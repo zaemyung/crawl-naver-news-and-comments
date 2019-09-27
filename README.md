@@ -1,4 +1,4 @@
-# crawl-naver-news
+# crawl-naver-news-and-comments
 Crawling the top 30 most read news articles per week
 
 ## Requirements
